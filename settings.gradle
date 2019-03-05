@@ -1,0 +1,2 @@
+rootProject.name = 'barn-automation-pi-groovy'
+enableFeaturePreview("IMPROVED_POM_SUPPORT")

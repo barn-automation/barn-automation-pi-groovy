@@ -1,0 +1,99 @@
+plugins {
+    id "org.hidetake.ssh" version "2.9.0"
+}
+
+apply plugin: 'java'
+apply plugin: 'maven'
+apply plugin: 'groovy'
+apply plugin: 'application'
+apply plugin: "org.hidetake.ssh"
+
+mainClassName = 'codes.recursive.barn.automation.Main'
+
+group = 'codes.recursive.pibarn'
+version = '1.0-SNAPSHOT'
+
+description = """barn-automation-pi-groovy"""
+
+sourceSets.main.resources.srcDirs += [ "src/main/resources" ]
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+ext {}
+
+remotes {
+    webServer {
+        host = 'barn-pi.local'
+        user = 'pi'
+        identity = file("${System.getProperty('user.home')}/.ssh/id_barn_pi")
+    }
+}
+
+repositories {
+    maven { url "http://repo.maven.apache.org/maven2" }
+    mavenLocal()
+    mavenCentral()
+    maven { url "https://oss.sonatype.org/service/local/repositories/snapshots/content" }
+}
+
+configurations {
+    localGroovyConf
+}
+
+dependencies {
+    localGroovyConf localGroovy()
+    compile 'org.codehaus.groovy:groovy-all:3.0.0-alpha-3'
+    compile group: 'com.fazecast', name: 'jSerialComm', version: '2.3.0'
+    compile group: 'log4j', name: 'log4j', version: '1.2.17'
+    compile group: 'com.pi4j', name: 'pi4j-core', version: '1.2-SNAPSHOT'
+    compile group: 'org.apache.kafka', name: 'kafka_2.12', version: '1.1.1'
+    compile group: 'com.101tec', name: 'zkclient', version: '0.8'
+    compile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.444'
+}
+
+/* this task is intended to test the application locally before running on Pi */
+task myRun(type: JavaExec){
+    System.setProperty("debugArduinoSerial", "false")
+    System.setProperty("gpioEnabled", "false")
+    System.setProperty("inTopicName", "incoming")
+    System.setProperty("outTopicName", "outgoing")
+    System.setProperty("kafkaOutgoingBootstrapServer", "129.146.79.59:6667")
+    System.setProperty("kafkaIncomingBootstrapServer", "129.146.79.59:6667")
+    classpath sourceSets.main.runtimeClasspath
+    main = mainClassName
+    systemProperties = System.properties
+}
+
+task copyLibs(type: Copy) {
+    from configurations.runtime
+    into 'build/libs/libs'
+}
+
+task deploy {
+    doLast {
+        ssh.run {
+            session(remotes.webServer) {
+                execute "rm -rf /home/pi/projects/pi-groovy/build"
+                put from: "${fileTree(dir: 'build').getDir()}", into: "/home/pi/projects/pi-groovy/"
+            }
+        }
+    }
+}
+
+deploy.dependsOn assemble
+copyLibs.dependsOn jar
+assemble.dependsOn copyLibs
+
+jar {
+  archiveName = "${project.name}.jar"
+    manifest {
+        attributes (
+            'Main-Class': "${mainClassName}",
+            'Class-Path': configurations.runtime.files.collect { "libs/$it.name" }.join(' ')
+        )
+    }
+}
