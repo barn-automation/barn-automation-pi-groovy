@@ -53,6 +53,8 @@ dependencies {
     compile group: 'org.apache.kafka', name: 'kafka_2.12', version: '1.1.1'
     compile group: 'com.101tec', name: 'zkclient', version: '0.8'
     compile group: 'com.amazonaws', name: 'aws-java-sdk-s3', version: '1.11.444'
+
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
 }
 
 /* this task is intended to test the application locally before running on Pi */
@@ -63,6 +65,8 @@ task myRun(type: JavaExec){
     System.setProperty("outTopicName", "outgoing")
     System.setProperty("kafkaOutgoingBootstrapServer", "129.146.79.59:6667")
     System.setProperty("kafkaIncomingBootstrapServer", "129.146.79.59:6667")
+    System.setProperty("ociConfigPath", "/Users/trsharp/.oci/config")
+    System.setProperty("streamId", "ocid1.stream.oc1.phx.aaaaaaaa43rirudiobxctznkkfds4jhhnejnqzhwq5754fejy6o4gc7tkcya")
     classpath sourceSets.main.runtimeClasspath
     main = mainClassName
     systemProperties = System.properties
@@ -71,14 +75,18 @@ task myRun(type: JavaExec){
 task copyLibs(type: Copy) {
     from configurations.runtime
     into 'build/libs/libs'
+    from 'libs'
+    into 'build/libs/libs'
 }
 
 task deploy {
     doLast {
         ssh.run {
             session(remotes.webServer) {
-                execute "rm -rf /home/pi/projects/pi-groovy/build"
-                put from: "${fileTree(dir: 'build').getDir()}", into: "/home/pi/projects/pi-groovy/"
+                execute "rm -rf /home/pi/projects/pi-groovy/build && rm -rf /home/pi/projects/pi-groovy/.oci"
+                execute "mkdir -vp /home/pi/projects/pi-groovy/build"
+                put from: "${fileTree(dir: 'build/libs').getDir()}", into: "/home/pi/projects/pi-groovy/build"
+                put from: "${fileTree(dir: '.oci').getDir()}", into: "/home/pi/projects/pi-groovy/"
             }
         }
     }
@@ -89,11 +97,11 @@ copyLibs.dependsOn jar
 assemble.dependsOn copyLibs
 
 jar {
-  archiveName = "${project.name}.jar"
+    archiveName = "${project.name}.jar"
     manifest {
         attributes (
             'Main-Class': "${mainClassName}",
-            'Class-Path': configurations.runtime.files.collect { "libs/$it.name" }.join(' ')
+            'Class-Path': configurations.runtime.files.collect { "libs/$it.name" }.join(' ') + new File('libs/').listFiles().join(' ')
         )
     }
 }

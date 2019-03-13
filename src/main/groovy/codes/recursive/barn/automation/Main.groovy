@@ -3,8 +3,8 @@ package codes.recursive.barn.automation
 import codes.recursive.barn.automation.camera.CameraService
 import codes.recursive.barn.automation.service.arduino.ArduinoService
 import codes.recursive.barn.automation.service.gpio.GpioService
-import codes.recursive.barn.automation.service.kafka.MessageConsumerService
-import codes.recursive.barn.automation.service.kafka.MessageProducerService
+import codes.recursive.barn.automation.service.streaming.MessageConsumerService
+import codes.recursive.barn.automation.service.streaming.MessageProducerService
 import com.amazonaws.auth.SystemPropertiesCredentialsProvider
 import com.amazonaws.client.builder.AwsClientBuilder
 import com.amazonaws.services.s3.AmazonS3
@@ -39,6 +39,10 @@ class Main {
         def storageUrl = System.getProperty("storageUrl", "${storageTenancy}.compat.objectstorage.${storageRegion}.oraclecloud.com")
         def storageBucket = System.getProperty("storageBucket", "barn-captures")
 
+        def incomingStreamId = System.getProperty("incomingStreamId", "")
+        def outgoingStreamId = System.getProperty("outgoingStreamId", "")
+        def ociConfigPath = System.getProperty("ociConfigPath", "")
+
         def storageConfig = [
                 accessToken: accessToken,
                 secretKey: secretKey,
@@ -59,9 +63,9 @@ class Main {
                 .withPathStyleAccessEnabled(true)
                 .build()
 
-        MessageProducerService messageProducerService = new MessageProducerService(outTopicName, kafkaOutgoingBootstrapServer)
+        MessageProducerService messageProducerService = new MessageProducerService(ociConfigPath, outgoingStreamId)
         ArduinoService arduinoService = new ArduinoService(messageProducerService, debugArduinoSerial)
-        MessageConsumerService messageConsumeService = new MessageConsumerService(inTopicName, kafkaIncomingBootstrapServer, arduinoService)
+        MessageConsumerService messageConsumeService = new MessageConsumerService(ociConfigPath, incomingStreamId, arduinoService)
         GpioService gpioService = new GpioService(gpioEnabled)
 
         CameraService cameraService = new CameraService(messageProducerService, s3Client, storageConfig)

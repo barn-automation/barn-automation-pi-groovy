@@ -1,7 +1,7 @@
 package codes.recursive.barn.automation.service.arduino
 
 import codes.recursive.barn.automation.model.ArduinoMessage
-import codes.recursive.barn.automation.service.kafka.MessageProducerService
+import codes.recursive.barn.automation.service.streaming.MessageProducerService
 import com.fazecast.jSerialComm.SerialPort
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
@@ -30,15 +30,14 @@ class ArduinoService {
 
     def listen() {
         try {
-            while (true)
-            {
+            while (true) {
                 while (comPort.bytesAvailable() <= 0) {
-                    sleep(5000)
+                    sleep(50)
                 }
                 byte[] readBuffer = new byte[comPort.bytesAvailable()]
                 int numRead = comPort.readBytes(readBuffer, readBuffer.length)
                 def incomingMessage = new String(readBuffer)
-                if( debug ) {
+                if (debug) {
                     log.info("Received from Arduino: ${incomingMessage}")
                 }
                 try {
@@ -48,18 +47,18 @@ class ArduinoService {
                         so, first parse it, then stringify it
                     */
                     def parsed = new JsonSlurper().parseText(incomingMessage)
-                    if( debug ) {
+                    if (debug) {
                         println parsed
                     }
-                    if( parsed.status == "OK" ) {
+                    if (parsed.status == "OK") {
                         parsed.messages.each {
-                            messageProducerService.send( JsonOutput.toJson(it) )
+                            messageProducerService.send(JsonOutput.toJson(it))
+                            log.info("${new Date()}: Publishing new message...")
                         }
                     }
                 }
-                catch(e) {
-                    //log.error("Parse error", e)
-                    log.warn("Could not parse ${incomingMessage}")
+                catch (e) {
+                    log.warn("${new Date()}: Could not parse incoming message...Not publishing anything")
                 }
             }
         }

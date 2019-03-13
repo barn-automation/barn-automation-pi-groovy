@@ -1,7 +1,7 @@
 package codes.recursive.barn.automation.camera
 
 import codes.recursive.barn.automation.service.gpio.GpioService
-import codes.recursive.barn.automation.service.kafka.MessageProducerService
+import codes.recursive.barn.automation.service.streaming.MessageProducerService
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.model.ObjectMetadata
 import com.amazonaws.services.s3.model.PutObjectRequest
