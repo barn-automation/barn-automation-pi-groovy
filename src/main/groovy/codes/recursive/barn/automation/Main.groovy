@@ -65,10 +65,10 @@ class Main {
 
         MessageProducerService messageProducerService = new MessageProducerService(ociConfigPath, outgoingStreamId)
         ArduinoService arduinoService = new ArduinoService(messageProducerService, debugArduinoSerial)
-        MessageConsumerService messageConsumeService = new MessageConsumerService(ociConfigPath, incomingStreamId, arduinoService)
+        CameraService cameraService = new CameraService(messageProducerService, s3Client, storageConfig)
+        MessageConsumerService messageConsumeService = new MessageConsumerService(ociConfigPath, incomingStreamId, arduinoService, cameraService)
         GpioService gpioService = new GpioService(gpioEnabled)
 
-        CameraService cameraService = new CameraService(messageProducerService, s3Client, storageConfig)
 
         if( gpioEnabled ) {
             Thread.start {

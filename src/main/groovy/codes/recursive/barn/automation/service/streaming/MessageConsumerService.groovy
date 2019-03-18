@@ -1,5 +1,6 @@
 package codes.recursive.barn.automation.service.streaming
 
+import codes.recursive.barn.automation.camera.CameraService
 import codes.recursive.barn.automation.model.ArduinoMessage
 import codes.recursive.barn.automation.service.arduino.ArduinoService
 import com.oracle.bmc.auth.ConfigFileAuthenticationDetailsProvider
@@ -16,6 +17,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 @Log4j
 class MessageConsumerService {
+    CameraService cameraService
     ArduinoService arduinoService
     String configFilePath
     String streamId
@@ -23,7 +25,7 @@ class MessageConsumerService {
     StreamClient client
     private final AtomicBoolean closed = new AtomicBoolean(false)
 
-    MessageConsumerService(configFilePath, streamId, arduinoService) {
+    MessageConsumerService(configFilePath, streamId, arduinoService, cameraService) {
         this.configFilePath = configFilePath
         this.streamId = streamId
         def provider =  new ConfigFileAuthenticationDetailsProvider(this.configFilePath, 'DEFAULT')
@@ -31,6 +33,7 @@ class MessageConsumerService {
         client.setRegion('us-phoenix-1')
         this.client = client
         this.arduinoService = arduinoService
+        this.cameraService = cameraService
     }
 
     def start() {
@@ -59,6 +62,15 @@ class MessageConsumerService {
                 try {
                     msg = new JsonSlurper().parseText( new String(record.value, "UTF-8") )
                     arduinoService.send( new ArduinoMessage(msg?.type, msg?.message) )
+                    // do we need to take any other actions?
+
+                    switch( msg?.type ) {
+                        case ArduinoMessage.CAMERA_0:
+                            if( msg?.message == ArduinoMessage.ON ) {
+                                cameraService.snapStoreBroadcast()
+                            }
+                            break
+                    }
                 }
                 catch (JsonException e) {
                     log.error("Error parsing JSON from ${record.value}")

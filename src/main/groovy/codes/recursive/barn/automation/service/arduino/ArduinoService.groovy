@@ -32,7 +32,7 @@ class ArduinoService {
         try {
             while (true) {
                 while (comPort.bytesAvailable() <= 0) {
-                    sleep(50)
+                    sleep(500)
                 }
                 byte[] readBuffer = new byte[comPort.bytesAvailable()]
                 int numRead = comPort.readBytes(readBuffer, readBuffer.length)
@@ -53,12 +53,12 @@ class ArduinoService {
                     if (parsed.status == "OK") {
                         parsed.messages.each {
                             messageProducerService.send(JsonOutput.toJson(it))
-                            log.info("${new Date()}: Publishing new message...")
+                            log.info("Publishing new message...")
                         }
                     }
                 }
                 catch (e) {
-                    log.warn("${new Date()}: Could not parse incoming message...Not publishing anything")
+                    log.warn("Could not parse incoming message...Not publishing anything")
                 }
             }
         }
