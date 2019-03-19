@@ -16,6 +16,7 @@ class CameraService {
     MessageProducerService messageProducerService
     AmazonS3 s3Client
     Map storageConfig
+    Boolean isCapturing = false
     Map scripts = [
             raspistill: "raspistill -ts -vf -hf -o -", //slower, better quality
             uv4l: "dd if=/dev/video0 bs=11M count=1", //faster, medium quality
@@ -84,20 +85,26 @@ class CameraService {
     }
 
     void snapStoreBroadcast() {
-        log.info("Taking picture and storing it...")
-        Thread.start {
-            File pic = new File( snapshotToFile() )
-            Map storeResult = store( pic )
-            //log.info("Picture stored...")
-            messageProducerService.send( JsonOutput.toJson([
-                    type: "CAMERA_0",
-                    data: [
-                            takenAt: new Date(),
-                            key: storeResult.key
-                    ]
-            ]) )
-            pic.delete()
-            //log.info("Message broadcast...")
+        if( !this.isCapturing ) {
+            this.isCapturing = true
+            log.info("Taking picture and storing it...")
+            Thread.start {
+                File pic = new File( snapshotToFile() )
+                Map storeResult = store( pic )
+                //log.info("Picture stored...")
+                messageProducerService.send( JsonOutput.toJson([
+                        type: "CAMERA_0",
+                        data: [
+                                takenAt: new Date(),
+                                key: storeResult.key
+                        ]
+                ]) )
+                pic.delete()
+                this.isCapturing = false
+            }
+        }
+        else {
+            log.warn("Snapshot request ignored.  Capture already in progress.")
         }
     }
 
